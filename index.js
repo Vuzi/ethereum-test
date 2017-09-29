@@ -26,38 +26,49 @@ app.use(session({
 
 // Balance management
 
-router.get('/', withAuth, (req, res) => {
-	eth.balance.get(req.account.address).then(balance => {
-  	res.send(balance)
+router.get('/:fileid', withAuth, (req, res) => {
+	const fileId = req.params.fileid || 0
+	
+	if(fileId <= 0)
+		return res.status(400).send({ error: true, message: 'Invalid id provided' })
+
+	eth.fileSigner.get(fileId).then(file => {
+  	res.send(file)
 	})
 })
 
-router.get('/:address', withAuth, (req, res, next) => {
-	const address = req.params.address || ''
+router.get('/:fileid/sign', withAuth, (req, res, next) => {
+	const fileId = req.params.fileid || 0
 	
-	if(!eth.utils.isAddress(address))
-		return res.status(400).send({ error: true, message: 'Invalid address' })
+	if(fileId <= 0)
+		return res.status(400).send({ error: true, message: 'Invalid id provided' })
 
-	eth.balance.get(address).then(balance => {
-  	res.send(balance)
+	eth.fileSigner.get(fileId).then(signers => {
+  	res.send(signers)
 	}).catch(e => next(e))
 })
 
-router.post('/send', withAuth, (req, res, next) => {
-	const to = req.body.to || ''
-	const quantity = req.body.quantity + 0
+router.post('/:fileid/sign', withAuth, (req, res, next) => {
+	const fileId = req.params.fileid || 0
+	
+	if(fileId <= 0)
+		return res.status(400).send({ error: true, message: 'Invalid id provided' })
 
-	if(!eth.utils.isAddress(to))
-		return res.status(400).send({ error: true, message: 'Invalid "to" address' })
-	if(quantity <= 0)
-		return res.status(400).send({ error: true, message: 'Invalid quantity' })
+	eth.fileSigner.sign(req.account.address, fileId).then(file => {
+  	res.send(file)
+	}).catch(e => next(e))
+})
 
-	eth.balance.send(req.account.address, to, quantity).then(detail => {
+router.put('/', withAuth, (req, res, next) => {
+	const hash = req.body.hash || ''
+	const filename = req.body.filename || ''
+
+	eth.fileSigner.create(req.account.address, filename, hash).then(detail => {
   	res.send(detail)
 	}).catch(e => next(e))
 })
 
-app.use('/balance', router)
+app.use('/filesigner', router)
 
 
 
@@ -105,56 +116,10 @@ app.get('/logout', (req, res) => {
 })
 
 
-
-// Tests
-
-app.get('/', function (req, res) {
-	/*
-	var web3 = new Web3();
-	web3.setProvider(new web3.providers.HttpProvider('http://localhost:8545'));
-	
-	const privateKey = '4d9aa93dac4e06b4095e3e0dbfa7a9f792141c957dd11a60700e120c3b520b1e'
-	const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-	
-	console.log(web3.eth.personal.importRawKey(privateKey, ""))
-
-	//web3.personal.unlockAccount("0x4777f4E0bD68FA03DC70837f493F860750b4E918","12345678");
-	//web3.eth.accounts.create();
-
-	/*
-
-	web3.eth.personal.unlockAccount("0x4777f4E0bD68FA03DC70837f493F860750b4E918", "12345678").then(res => {
-
-		const VuziCoinAddr = "0x35fce31d4f5DfD20C5Ff376FcEF0B7B6e0c1B44E"
-		const VuziCoinAbi = [ { "constant": true, "inputs": [], "name": "minter", "outputs": [ { "name": "", "type": "address", "value": "0x4777f4e0bd68fa03dc70837f493f860750b4e918" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [ { "name": "", "type": "address" } ], "name": "balances", "outputs": [ { "name": "", "type": "uint256", "value": "0" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [ { "name": "receiver", "type": "address" }, { "name": "amount", "type": "uint256" } ], "name": "mint", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [ { "name": "receiver", "type": "address" }, { "name": "amount", "type": "uint256" } ], "name": "send", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "inputs": [], "payable": false, "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "from", "type": "address" }, { "indexed": false, "name": "to", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" } ], "name": "Sent", "type": "event" } ]
-		const VuziCoin = new web3.eth.Contract(VuziCoinAbi, VuziCoinAddr);
-
-		VuziCoin.methods.balances("0x4777f4E0bD68FA03DC70837f493F860750b4E918").call().then(res => {
-			console.log('balance = ', res); //, web3.utils.fromWei(res, 'ether'));
-			//console.log('res', new BigNumber(res).toString(10));
-		}).catch(err => {
-			console.log('err', err);
-		})
-
-		VuziCoin.methods.send("0x9329B1e5dF3e54b1e03c3F7E3650069F15bfAb1b", 10).send({ from: "0x4777f4E0bD68FA03DC70837f493F860750b4E918" }).then(res => {
-			console.log('send = ', res); //, web3.utils.fromWei(res, 'ether'));
-			//console.log('res', new BigNumber(res).toString(10));
-		}).catch(err => {
-			console.log('err', err);
-		})
-
-	}).catch(err => {
-		console.log('err', err);
-	})
-	*/
-
-  res.send('Hello World!')
-})
-
 // Error middleware
 app.use((err, req, res, next) => {
 	console.error(err)
-  res.send({ error: true, message: err.message || 'An error occurred' })
+  res.status(500).send({ error: true, message: err.message || 'An error occurred' })
 })
 
 app.listen(3000, function () {

@@ -6,22 +6,34 @@ const web3 = new Web3();
 web3.setProvider(new web3.providers.HttpProvider(provider))
 
 
-const VuziCoinAddr = "0x35fce31d4f5DfD20C5Ff376FcEF0B7B6e0c1B44E"
-const VuziCoinAbi = [ { "constant": true, "inputs": [], "name": "minter", "outputs": [ { "name": "", "type": "address", "value": "0x4777f4e0bd68fa03dc70837f493f860750b4e918" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [ { "name": "", "type": "address" } ], "name": "balances", "outputs": [ { "name": "", "type": "uint256", "value": "0" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [ { "name": "receiver", "type": "address" }, { "name": "amount", "type": "uint256" } ], "name": "mint", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [ { "name": "receiver", "type": "address" }, { "name": "amount", "type": "uint256" } ], "name": "send", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "inputs": [], "payable": false, "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "from", "type": "address" }, { "indexed": false, "name": "to", "type": "address" }, { "indexed": false, "name": "amount", "type": "uint256" } ], "name": "Sent", "type": "event" } ]
-const VuziCoin = new web3.eth.Contract(VuziCoinAbi, VuziCoinAddr);
+const FileSignerAddress = "0x7d743098B70373e49F699C30B10deDDc272840d4"
+const FileSignerAbi = [ { "constant": false, "inputs": [ { "name": "filename", "type": "string" }, { "name": "fileHash", "type": "string" } ], "name": "addFile", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": false, "inputs": [ { "name": "fileId", "type": "uint256" } ], "name": "fileWithSigners", "outputs": [ { "name": "", "type": "uint256" }, { "name": "", "type": "string" }, { "name": "", "type": "string" }, { "name": "", "type": "address[]" } ], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [ { "name": "", "type": "uint256" } ], "name": "files", "outputs": [ { "name": "id", "type": "uint256", "value": "0" }, { "name": "fileHash", "type": "string", "value": "" }, { "name": "filename", "type": "string", "value": "" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [ { "name": "fileId", "type": "uint256" } ], "name": "signFile", "outputs": [], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "inputs": [], "payable": false, "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "fileId", "type": "uint256" }, { "indexed": false, "name": "filename", "type": "string" }, { "indexed": false, "name": "filehash", "type": "string" } ], "name": "FileCreated", "type": "event" }, { "anonymous": false, "inputs": [ { "indexed": false, "name": "fileId", "type": "uint256" }, { "indexed": false, "name": "filename", "type": "string" }, { "indexed": false, "name": "filehash", "type": "string" }, { "indexed": false, "name": "signer", "type": "address" } ], "name": "FileSigned", "type": "event" } ]
+const FileSigner = new web3.eth.Contract(FileSignerAbi, FileSignerAddress);
 
 const Ethereum = {
-
-	balance : {
-		get: (from) => {
-			return VuziCoin.methods.balances(from).call().then(res => {
-				return { balance: res }
+	fileSigner : {
+		get: (fileId) => {
+			return FileSigner.methods.fileWithSigners(fileId).call().then(file => {
+				return {
+					id: file["0"],
+					fileHash: file["1"],
+					filename: file["2"],
+					signers: file["3"]
+				}
 			})
 		},
 
-		send: (from, to, quantity) => {
-			return VuziCoin.methods.send(to, quantity + 0).send({ from: from }).then(res => {
-				return { send: quantity, to: to }
+		create: (from, filename, fileHash) => {
+			return FileSigner.methods.addFile(filename, fileHash).send({ from: from, gasPrice: 100000000000 }).then(res => {
+				console.log(res)
+				return { res }
+			})
+		},
+
+		sign: (from, fileId) => {
+			return FileSigner.methods.signFile(fileId).send({ from: from }).then(res => {
+				console.log(res)
+				return { res }
 			})
 		}
 	},
